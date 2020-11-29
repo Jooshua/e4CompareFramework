@@ -1,5 +1,6 @@
 package de.tu_bs.cs.isf.e4cf.parts.project_explorer;
 
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,11 +38,15 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.embed.swt.FXCanvas;
 import javafx.embed.swt.SWTFXUtils;
+import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
+import javafx.util.Callback;
 
 /**
  * View Controller for the ProjectExplorerView
@@ -81,6 +86,17 @@ public class ProjectExplorerViewController {
 
 		view.projectTree.setRoot(root);
 		view.projectTree.setShowRoot(false);
+		view.projectTree.setEditable(true);
+		
+		view.projectTree.setCellFactory(new Callback<TreeView<FileTreeElement>, TreeCell<FileTreeElement>>() {
+			
+			@Override
+			public TreeCell<FileTreeElement> call(TreeView<FileTreeElement> param) {
+				// TODO Auto-generated method stub
+				TreeCell<FileTreeElement> treeCell = new CustomTreeCell(services, fileExtensions);
+				return treeCell;
+			}
+		});
 		
 		// Register the SWT Context menu on the canvas
 		_menuService.registerContextMenu(canvas, StringTable.PROJECT_EXPLORER_CONTEXT_MENU_ID);
@@ -116,7 +132,7 @@ public class ProjectExplorerViewController {
 			TreeItem<FileTreeElement> node = buildTree(child, false, state);
 			currentNode.getChildren().add(node);
 		}
-
+		
 		return currentNode;
 	}
 
