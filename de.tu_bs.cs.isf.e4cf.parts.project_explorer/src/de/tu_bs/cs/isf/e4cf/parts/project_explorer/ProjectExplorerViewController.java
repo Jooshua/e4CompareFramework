@@ -1,6 +1,5 @@
 package de.tu_bs.cs.isf.e4cf.parts.project_explorer;
 
-import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,7 +37,6 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.embed.swt.FXCanvas;
 import javafx.embed.swt.SWTFXUtils;
-import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.TreeCell;
@@ -218,6 +216,16 @@ public class ProjectExplorerViewController {
 		view.projectTree.setShowRoot(false);
 		view.projectTree.getSelectionModel().selectedItemProperty().addListener(changeListener);
 	}
+	
+	/**
+	 * Rebuild the project explorer and update it's view.
+	 */
+	@Inject
+	@Optional
+	public void rename(@UIEventTopic(E4CEventTable.EVENT_RENAME_PROJECT_EXPLORER_ITEM) Object o) {
+		view.projectTree.edit(view.projectTree.getSelectionModel().getSelectedItem());
+	}
+	
 	
 	/**
 	 * Traverse the filesystem tree via dfs to save the old state of each node

@@ -4,34 +4,24 @@ package de.tu_bs.cs.isf.e4cf.parts.project_explorer;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
 
-import javax.inject.Inject;
-
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.swt.graphics.Image;
 
 import de.tu_bs.cs.isf.e4cf.core.file_structure.FileTreeElement;
-import de.tu_bs.cs.isf.e4cf.core.file_structure.WorkspaceFileSystem;
 import de.tu_bs.cs.isf.e4cf.core.file_structure.util.FileHandlingUtility;
 import de.tu_bs.cs.isf.e4cf.core.stringtable.E4CStringTable;
-import de.tu_bs.cs.isf.e4cf.core.util.RCPContentProvider;
 import de.tu_bs.cs.isf.e4cf.core.util.RCPMessageProvider;
 import de.tu_bs.cs.isf.e4cf.core.util.ServiceContainer;
 import de.tu_bs.cs.isf.e4cf.parts.project_explorer.interfaces.IProjectExplorerExtension;
 import de.tu_bs.cs.isf.e4cf.parts.project_explorer.stringtable.FileTable;
-import de.tu_bs.cs.isf.e4cf.parts.project_explorer.stringtable.StringTable;
 import javafx.embed.swt.SWTFXUtils;
 import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TreeCell;
-import javafx.scene.control.cell.TextFieldTreeCell;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
-import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 
 public class CustomTreeCell extends TreeCell<FileTreeElement> {
@@ -48,6 +38,9 @@ public class CustomTreeCell extends TreeCell<FileTreeElement> {
 		this.fileExtensions = fileExtensions;
 	}
 
+	/**
+	 * Will be invoked by pressing F2, Enter, double click (default behavior by JavaFX)
+	 */
 	@Override
 	public void startEdit() {
 		super.startEdit();
@@ -56,6 +49,9 @@ public class CustomTreeCell extends TreeCell<FileTreeElement> {
 		setGraphic(editTextField);
 	}
 
+	/**
+	 * Will be invoked by pressing ESCAPE Key (default behavior by JavaFX)
+	 */
 	@Override
 	public void cancelEdit() {
 		super.cancelEdit();
@@ -95,14 +91,11 @@ public class CustomTreeCell extends TreeCell<FileTreeElement> {
 
 			@Override
 			public void handle(KeyEvent event) {
-				// TODO Auto-generated method stub
 				switch (event.getCode()) {
 				case ENTER:
 					renameItem();
 					break;
-				
-				case ESCAPE:
-					cancelEdit();
+				default:
 					break;
 				}
 			}
@@ -114,6 +107,7 @@ public class CustomTreeCell extends TreeCell<FileTreeElement> {
 	 * Returns an appropriate image for a given tree element
 	 * @param element tree element
 	 * @return an image
+	 * TODO: Remove this method from the controller
 	 */
 	public Node getImage(Object element) {
 		Image image = null;
