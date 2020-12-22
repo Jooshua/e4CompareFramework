@@ -1,136 +1,163 @@
-/**
- * 
- */
 package de.tu_bs.cs.isf.e4cf.parts.project_explorer.wizards;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.io.File;
 import java.util.List;
 
-import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.jface.wizard.Wizard;
-import org.eclipse.jface.wizard.WizardPage;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.FileDialog;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Text;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
+import javafx.scene.Parent;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
+import javafx.stage.FileChooser.ExtensionFilter;
+import javafx.stage.Stage;
 
 /**
- * A Wizard which let's clients copy one or more files into a selected directory or project.
- * 
- * @author Oliver Urbaniak
- *
+ * This class shows a satisfaction survey
  */
 public class FileImportWizard extends Wizard {
-	private static final String WIZARD_PAGE_TEXT = "Choose the files you want to import";
-	private static final String WIZARD_PAGE_TITLE = "File Import";
-	private static final String WIZARD_TITLE = "File Import Wizard";
-	
-	private Shell _shell;
-	private ImageDescriptor _image;	
-	private Text _pathsText;
-	private Button _selectFilesButton;
-	private List<Path> _selectedPaths = new ArrayList<>();
-	
-	public FileImportWizard(Shell shell, ImageDescriptor imageDesc) {
-		_shell = shell;
-		_image = imageDesc;
+	Stage owner;
+
+	public FileImportWizard(Stage owner) {
+		super(new FileImportPage(), new MoreInformationPage(), new ThanksPage());
+		this.owner = owner;
 	}
-	
-	@Override
-	 public void addPages() {
-		this.setWindowTitle(WIZARD_TITLE);
-		this.setDefaultPageImageDescriptor(_image);
-		this.addPage(new WizardPage(WIZARD_PAGE_TITLE, WIZARD_PAGE_TEXT, _image) {
-			
-			@Override
-			public void createControl(Composite parent) {
-				Composite mainComposite = new Composite(parent, SWT.NONE);
-				GridLayout mainLayout = new GridLayout(2, false);
-				mainLayout.verticalSpacing = 20;
-				mainComposite.setLayout(mainLayout);
-				
-				new Label(mainComposite,SWT.NONE).setText(""); // padding
-				buildSelectionButton(mainComposite);
-				new Label(mainComposite,SWT.NONE).setText(""); // padding
-				buildFileOutputText(mainComposite);
-								
-				super.setControl(mainComposite);
-			}
-			
-			private void buildSelectionButton(Composite mainComposite) {
-				_selectFilesButton = new Button(mainComposite, SWT.PUSH);
-				GridData buttonLayoutData = new GridData(SWT.LEFT, SWT.BOTTOM, true, true);
-				_selectFilesButton.setLayoutData(buttonLayoutData);
-				_selectFilesButton.setText("Select Files ...");
-				_selectFilesButton.addSelectionListener(buildFileSelectionListener());
-			}
 
-			private void buildFileOutputText(Composite mainComposite) {
-				_pathsText = new Text(mainComposite, SWT.MULTI | SWT.READ_ONLY | SWT.LEFT | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-				_pathsText.setText("");
-				Color r = new org.eclipse.swt.graphics.Color(null, 255, 255, 255);
-				_pathsText.setBackground(r);
-				GridData pathsTextGD = new GridData(SWT.FILL, SWT.FILL, true, true);
-				pathsTextGD.verticalSpan = 2;
-				pathsTextGD.heightHint = 200;
-				_pathsText.setLayoutData(pathsTextGD);
-			}
+	public void finish() {
+		System.out.println("Had complaint? " + SurveyData.instance.hasComplaints.get());
+		if (SurveyData.instance.hasComplaints.get()) {
+			System.out.println("Complaints: " + (SurveyData.instance.complaints.get().isEmpty() ? "No Details"
+					: "\n" + SurveyData.instance.complaints.get()));
+		}
+		owner.close();
+	}
 
-			private SelectionListener buildFileSelectionListener() {
-				return new SelectionListener() {			
-					@Override	
-					public void widgetSelected(SelectionEvent e) {				
-						// open file dialog
-						FileDialog fd = new FileDialog(_shell, SWT.MULTI);
-						fd.open();
-						String[] filenames = fd.getFileNames();
-						String absRootPath = fd.getFilterPath();
-						
-						addFiles(absRootPath, filenames);
-					}
+	public void cancel() {
+		System.out.println("Cancelled");
+		owner.close();
+	}
+}
 
-					private void addFiles(String absRootPath, String[] filenames) {
-						_pathsText.setText("");
-						if (!_selectedPaths.isEmpty()) _selectedPaths.clear();
-						for (String filename : filenames) {
-							Path file = Paths.get(absRootPath+"\\"+filename);
-							if (Files.exists(file) && Files.isRegularFile(file)) {
-								_selectedPaths.add(file);
-								_pathsText.append(file.toString()+"\n");
-							}	
-						}
-					}
+/**
+ * Simple placeholder class for the customer entered survey response.
+ */
+class SurveyData {
+	BooleanProperty hasComplaints = new SimpleBooleanProperty();
+	StringProperty complaints = new SimpleStringProperty();
+	static SurveyData instance = new SurveyData();
+}
 
-					@Override
-					public void widgetDefaultSelected(SelectionEvent e) {
-						this.widgetSelected(e);
-					}
-				};
+/**
+ * This class determines if the user has complaints. If not, it jumps to the
+ * last page of the wizard.
+ */
+class FileImportPage extends WizardPage {
+	private Button openButton;
+	private Button browseButton;
+	private Button directoryButton;
+
+	public FileImportPage() {
+		super("Complaints");
+
+		final FileChooser fileChooser = new FileChooser();
+		fileChooser.getExtensionFilters().addAll(new ExtensionFilter("Text Files", "*.txt"),
+				new ExtensionFilter("Image Files", "*.png", "*.jpg", "*.gif"), new ExtensionFilter("All Files", "*.*"));
+		final DirectoryChooser dirChooser = new DirectoryChooser();
+
+		Stage stg = new Stage();
+		stg.setTitle("Choose a File");
+
+		openButton.setOnAction((event) -> {
+//        	Title can be set, defaults otherwise
+//        	fileChooser.setTitle("Open a File");
+			File selectedFile = fileChooser.showOpenDialog(stg);
+			if (selectedFile != null) {
+				// TODO: handle file
 			}
 		});
-	}
-	
-	public List<Path> getSourceFiles() {
-		return _selectedPaths;
-	}
-	
-	/* (non-Javadoc)
-	 * @see org.eclipse.jface.wizard.Wizard#performFinish()
-	 */
-	@Override
-	public boolean performFinish() {		
-		return !_selectedPaths.isEmpty();
+
+		browseButton.setOnAction((event) -> {
+//        	Title can be set, defaults otherwise
+//        	fileChooser.setTitle("Open Files");
+			List<File> selectedFiles = fileChooser.showOpenMultipleDialog(stg);
+			if (!selectedFiles.isEmpty()) {
+				// TODO: handle file
+			}
+		});
+
+		directoryButton.setOnAction((event) -> {
+			File selectedDir = dirChooser.showDialog(stg);
+			if (selectedDir != null) {
+				// TODO: handle file
+				// selectedDir.getAbsolutePath();
+			}
+		});
+
+		nextButton.setDisable(true);
+		finishButton.setDisable(true);
 	}
 
+	public Parent getContent() {
+		openButton = new Button("Import a File");
+		openButton.setMinWidth(200);
+		browseButton = new Button("Import Files...");
+		browseButton.setMinWidth(200);
+		directoryButton = new Button("Import a Directory");
+		directoryButton.setMinWidth(200);
+//        SurveyData.instance.hasComplaints.bind(yes.selectedProperty());
+		return new VBox(5, new Label("Choose an Upload Method:"), openButton, browseButton, directoryButton);
+	}
+
+	void nextPage() {
+//        // If they have complaints, go to the normal next page
+//        if (options.getSelectedToggle().equals(yes)) {
+//            super.nextPage();
+//        } else {
+//            // No complaints? Short-circuit the rest of the pages
+//            navTo("Thanks");
+//        }
+	}
+}
+
+/**
+ * This page gathers more information about the complaint
+ */
+class MoreInformationPage extends WizardPage {
+	public MoreInformationPage() {
+		super("More Info");
+	}
+
+	Parent getContent() {
+		TextArea textArea = new TextArea();
+		textArea.setWrapText(true);
+		textArea.setPromptText("Tell me what's wrong Dave...");
+		nextButton.setDisable(true);
+		textArea.textProperty().addListener((observableValue, oldValue, newValue) -> {
+			nextButton.setDisable(newValue.isEmpty());
+		});
+		SurveyData.instance.complaints.bind(textArea.textProperty());
+		return new VBox(5, new Label("Please enter your complaints."), textArea);
+	}
+}
+
+/**
+ * This page thanks the user for taking the survey
+ */
+class ThanksPage extends WizardPage {
+	public ThanksPage() {
+		super("Thanks");
+	}
+
+	Parent getContent() {
+		StackPane stack = new StackPane(new Label("Thanks!"));
+		VBox.setVgrow(stack, Priority.ALWAYS);
+		return stack;
+	}
 }

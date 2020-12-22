@@ -22,10 +22,10 @@ class Wizard extends StackPane {
     private Stack<Integer> history = new Stack<>();
     private int curPageIdx = UNDEFINED;
 
-    Wizard(WizardPage... nodes) {
+    public Wizard(WizardPage... nodes) {
         pages.addAll(nodes);
         navTo(0);
-        setStyle("-fx-padding: 10; -fx-background-color: cornsilk;");
+        setStyle("-fx-padding: 10;");
     }
 
     void nextPage() {
@@ -101,7 +101,7 @@ abstract class WizardPage extends VBox {
         label.setStyle("-fx-font-weight: bold; -fx-padding: 0 0 5 0;");
         setId(title);
         setSpacing(5);
-        setStyle("-fx-padding:10; -fx-background-color: honeydew; -fx-border-color: derive(honeydew, -30%); -fx-border-width: 3;");
+        setStyle("-fx-padding:10; -fx-border-color: derive(honeydew, -30%); -fx-border-width: 3;");
 
         Region spring = new Region();
         VBox.setVgrow(spring, Priority.ALWAYS);
