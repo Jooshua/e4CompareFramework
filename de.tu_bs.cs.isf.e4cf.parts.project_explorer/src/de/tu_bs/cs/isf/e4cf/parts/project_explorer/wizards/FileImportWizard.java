@@ -1,18 +1,19 @@
 package de.tu_bs.cs.isf.e4cf.parts.project_explorer.wizards;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.NotDirectoryException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.SimpleBooleanProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
+import de.tu_bs.cs.isf.e4cf.core.file_structure.FileTreeElement;
+import de.tu_bs.cs.isf.e4cf.core.file_structure.util.FileHandlingUtility;
+import de.tu_bs.cs.isf.e4cf.core.util.ServiceContainer;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
@@ -23,18 +24,22 @@ import javafx.stage.Stage;
  * This class shows a satisfaction survey
  */
 public class FileImportWizard extends Wizard {
+	private ServiceContainer services;
 	Stage owner;
 
-	public FileImportWizard(Stage owner) {
-		super(new FileImportPage(), new MoreInformationPage(), new ThanksPage());
+	public FileImportWizard(Stage owner, ServiceContainer services) {
+		super(new FileImportPage());
 		this.owner = owner;
+		this.services = services;
 	}
 
 	public void finish() {
-		System.out.println("Had complaint? " + SurveyData.instance.hasComplaints.get());
-		if (SurveyData.instance.hasComplaints.get()) {
-			System.out.println("Complaints: " + (SurveyData.instance.complaints.get().isEmpty() ? "No Details"
-					: "\n" + SurveyData.instance.complaints.get()));
+		System.out.println("Called finish()");
+		try {
+			Path target = getTargetPath();
+			copyFiles(target, FileImportData.instance.selectedFiles);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 		owner.close();
 	}
@@ -43,20 +48,42 @@ public class FileImportWizard extends Wizard {
 		System.out.println("Cancelled");
 		owner.close();
 	}
+
+	private void copyFiles(Path target, List<Path> selectedFiles) throws IOException {
+		for (Path selectedFile : selectedFiles) {
+			System.out.println("Selected: " + selectedFile.getFileName());
+			services.workspaceFileSystem.copy(selectedFile, target);
+		}
+	}
+
+	private Path getTargetPath() throws NotDirectoryException {
+		FileTreeElement selection = services.rcpSelectionService.getCurrentSelectionFromExplorer();
+		checkForValidSelection(selection);
+		Path target = FileHandlingUtility.getPath(selection);
+		return target;
+	}
+
+	private void checkForValidSelection(FileTreeElement selection) throws NotDirectoryException {
+		if (selection == null) {
+			throw new NullPointerException("selection is invalid.");
+		}
+		if (!selection.isDirectory()) {
+			throw new NotDirectoryException("selection is not a directory.");
+		}
+	}
 }
 
 /**
- * Simple placeholder class for the customer entered survey response.
+ * Connects the data model of the wizard and its page.
  */
-class SurveyData {
-	BooleanProperty hasComplaints = new SimpleBooleanProperty();
-	StringProperty complaints = new SimpleStringProperty();
-	static SurveyData instance = new SurveyData();
+class FileImportData {
+	List<Path> selectedFiles = new ArrayList<>();
+	static FileImportData instance = new FileImportData();
 }
 
 /**
- * This class determines if the user has complaints. If not, it jumps to the
- * last page of the wizard.
+ * This class builds a wizard page for choosing a file. File copy is done in the
+ * wizard, not the page.
  */
 class FileImportPage extends WizardPage {
 	private Button openButton;
@@ -67,41 +94,62 @@ class FileImportPage extends WizardPage {
 		super("Complaints");
 
 		final FileChooser fileChooser = new FileChooser();
-		fileChooser.getExtensionFilters().addAll(new ExtensionFilter("Text Files", "*.txt"),
-				new ExtensionFilter("Image Files", "*.png", "*.jpg", "*.gif"), new ExtensionFilter("All Files", "*.*"));
+		fileChooser.getExtensionFilters().addAll(new ExtensionFilter("All Files", "*.*"),
+				new ExtensionFilter("Text Files", "*.txt"),
+				new ExtensionFilter("Image Files", "*.png", "*.jpg", "*.gif"));
 		final DirectoryChooser dirChooser = new DirectoryChooser();
 
 		Stage stg = new Stage();
 		stg.setTitle("Choose a File");
 
+		nextButton.setDisable(true);
+		finishButton.setDisable(true);
+
 		openButton.setOnAction((event) -> {
-//        	Title can be set, defaults otherwise
-//        	fileChooser.setTitle("Open a File");
+//        	Title can be set, defaults otherwise: e.g. fileChooser.setTitle("Open a File");
 			File selectedFile = fileChooser.showOpenDialog(stg);
 			if (selectedFile != null) {
-				// TODO: handle file
+				convertFileToPath(selectedFile);
+				finishButton.setDisable(false);
 			}
 		});
 
 		browseButton.setOnAction((event) -> {
-//        	Title can be set, defaults otherwise
-//        	fileChooser.setTitle("Open Files");
 			List<File> selectedFiles = fileChooser.showOpenMultipleDialog(stg);
 			if (!selectedFiles.isEmpty()) {
-				// TODO: handle file
+				convertFilesToPaths(selectedFiles);
+				finishButton.setDisable(false);
 			}
 		});
 
 		directoryButton.setOnAction((event) -> {
 			File selectedDir = dirChooser.showDialog(stg);
 			if (selectedDir != null) {
-				// TODO: handle file
-				// selectedDir.getAbsolutePath();
+//				TODO: recursive directory content
+				convertFileToPath(selectedDir);
+				finishButton.setDisable(false);
 			}
 		});
 
-		nextButton.setDisable(true);
-		finishButton.setDisable(true);
+	}
+
+	private void convertFileToPath(File file) {
+		Path selectedPath = Paths.get(file.getAbsolutePath());
+		if (selectedPath != null) {
+			FileImportData.instance.selectedFiles.clear();
+			FileImportData.instance.selectedFiles.add(selectedPath);
+		}
+
+	}
+	
+	private void convertFilesToPaths(List<File> selectedFiles) {
+		FileImportData.instance.selectedFiles.clear();
+		for (File file : selectedFiles) {
+			Path path = Paths.get(file.getAbsolutePath());
+			if (path != null) {
+				FileImportData.instance.selectedFiles.add(path);
+			}
+		}
 	}
 
 	public Parent getContent() {
@@ -116,48 +164,6 @@ class FileImportPage extends WizardPage {
 	}
 
 	void nextPage() {
-//        // If they have complaints, go to the normal next page
-//        if (options.getSelectedToggle().equals(yes)) {
-//            super.nextPage();
-//        } else {
-//            // No complaints? Short-circuit the rest of the pages
-//            navTo("Thanks");
-//        }
-	}
-}
-
-/**
- * This page gathers more information about the complaint
- */
-class MoreInformationPage extends WizardPage {
-	public MoreInformationPage() {
-		super("More Info");
-	}
-
-	Parent getContent() {
-		TextArea textArea = new TextArea();
-		textArea.setWrapText(true);
-		textArea.setPromptText("Tell me what's wrong Dave...");
-		nextButton.setDisable(true);
-		textArea.textProperty().addListener((observableValue, oldValue, newValue) -> {
-			nextButton.setDisable(newValue.isEmpty());
-		});
-		SurveyData.instance.complaints.bind(textArea.textProperty());
-		return new VBox(5, new Label("Please enter your complaints."), textArea);
-	}
-}
-
-/**
- * This page thanks the user for taking the survey
- */
-class ThanksPage extends WizardPage {
-	public ThanksPage() {
-		super("Thanks");
-	}
-
-	Parent getContent() {
-		StackPane stack = new StackPane(new Label("Thanks!"));
-		VBox.setVgrow(stack, Priority.ALWAYS);
-		return stack;
+//        // logic: conditions to activate the "next" button
 	}
 }
