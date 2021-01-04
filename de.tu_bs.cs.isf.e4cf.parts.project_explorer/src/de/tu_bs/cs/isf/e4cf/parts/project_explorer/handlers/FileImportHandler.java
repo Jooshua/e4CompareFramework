@@ -20,7 +20,7 @@ public class FileImportHandler {
 		Stage stage = new Stage();
 		stage.setTitle(WINDOW_TITLE);
 //		stage.getIcons().add(new Image(FILE_ICON_PATH));
-		stage.setScene(new Scene(new FileImportWizard(stage, services), 240, 360));
+		stage.setScene(new Scene(new FileImportWizard(stage, services), 300, 360));
 		stage.show();
 	}
 		

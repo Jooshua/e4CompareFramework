@@ -2,6 +2,7 @@ package de.tu_bs.cs.isf.e4cf.parts.project_explorer.wizards;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,7 +22,7 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
 
 /**
- * This class shows a satisfaction survey
+ * This class shows a file import dialog
  */
 public class FileImportWizard extends Wizard {
 	private ServiceContainer services;
@@ -33,11 +34,20 @@ public class FileImportWizard extends Wizard {
 		this.services = services;
 	}
 
+	/**
+	 * Called from the "Finish" Button
+	 */
 	public void finish() {
-		System.out.println("Called finish()");
 		try {
 			Path target = getTargetPath();
-			copyFiles(target, FileImportData.instance.selectedFiles);
+			if (Files.isDirectory(FileImportData.instance.selectedFiles.get(0))) {
+				Files.walk(FileImportData.instance.selectedFiles.get(0))
+				.forEach(sourcePath -> {
+					// TODO: recursive dir import
+				});
+			} else {
+				copyFiles(target, FileImportData.instance.selectedFiles);
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -45,13 +55,11 @@ public class FileImportWizard extends Wizard {
 	}
 
 	public void cancel() {
-		System.out.println("Cancelled");
 		owner.close();
 	}
 
 	private void copyFiles(Path target, List<Path> selectedFiles) throws IOException {
 		for (Path selectedFile : selectedFiles) {
-			System.out.println("Selected: " + selectedFile.getFileName());
 			services.workspaceFileSystem.copy(selectedFile, target);
 		}
 	}
@@ -89,6 +97,7 @@ class FileImportPage extends WizardPage {
 	private Button openButton;
 	private Button browseButton;
 	private Button directoryButton;
+	private Label fileNameLabel;
 
 	public FileImportPage() {
 		super("Complaints");
@@ -138,29 +147,36 @@ class FileImportPage extends WizardPage {
 		if (selectedPath != null) {
 			FileImportData.instance.selectedFiles.clear();
 			FileImportData.instance.selectedFiles.add(selectedPath);
+			fileNameLabel.setText(selectedPath.toString());
 		}
 
 	}
 	
 	private void convertFilesToPaths(List<File> selectedFiles) {
 		FileImportData.instance.selectedFiles.clear();
+		String displayText = "";
 		for (File file : selectedFiles) {
 			Path path = Paths.get(file.getAbsolutePath());
 			if (path != null) {
 				FileImportData.instance.selectedFiles.add(path);
+				displayText = displayText + path + "\n";
 			}
 		}
+		fileNameLabel.setText(displayText);
 	}
 
 	public Parent getContent() {
 		openButton = new Button("Import a File");
-		openButton.setMinWidth(200);
+		openButton.setMinWidth(260);
 		browseButton = new Button("Import Files...");
-		browseButton.setMinWidth(200);
+		browseButton.setMinWidth(260);
 		directoryButton = new Button("Import a Directory");
-		directoryButton.setMinWidth(200);
-//        SurveyData.instance.hasComplaints.bind(yes.selectedProperty());
-		return new VBox(5, new Label("Choose an Upload Method:"), openButton, browseButton, directoryButton);
+		directoryButton.setMinWidth(260);
+		fileNameLabel = new Label("No file chosen yet.");
+		fileNameLabel.setStyle("-fx-padding: 0 0 5 0");
+		fileNameLabel.setMinWidth(260);
+		
+		return new VBox(5, new Label("Choose an Import Method:"), openButton, browseButton, directoryButton, fileNameLabel);
 	}
 
 	void nextPage() {
